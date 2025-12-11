@@ -33,8 +33,8 @@ print_header() {
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TERRAFORM_DIR="$PROJECT_ROOT/terraform/simple-k8s"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+TERRAFORM_DIR="$PROJECT_ROOT/terraform/aws-infra"
 BASTION_IP="54.251.183.40"
 MASTER1_IP="10.0.10.82"
 SSH_KEY_PATH="$TERRAFORM_DIR/dhakacart-k8s-key.pem"

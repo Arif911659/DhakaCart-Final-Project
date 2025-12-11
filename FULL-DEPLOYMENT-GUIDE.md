@@ -1,6 +1,6 @@
-# 🚀 4-Hour Deployment Guide: Error-Free Workflow
+# 🚀 Full Stack Deployment Guide
 
-This guide details the exact structure, files, and steps to follow for a flawless deployment within your 4-hour AWS access window.
+This guide details the exact structure, files, and steps to follow for a flawless production deployment of the DhakaCart application.
 
 ---
 
@@ -8,16 +8,16 @@ This guide details the exact structure, files, and steps to follow for a flawles
 
 | Phase | Directory / File | Purpose |
 |-------|------------------|---------|
-| **1. Infra** | `terraform/simple-k8s/` | Infrastructure Code (VPC, EC2, ALB) |
-| **2. Auto** | `scripts/deploy-4-hour-window.sh` | **MASTER SCRIPT** - Runs *everything* (Infra+K8s+App+Seed) |
-| **3. Config** | `scripts/load-infrastructure-config.sh` | Loads IPs from Terraform to scripts |
+| **1. Infra** | `terraform/aws-infra/` | Infrastructure Code (VPC, EC2, ALB) |
+| **2. Auto** | `deploy-full-stack.sh` | **MASTER SCRIPT** - Runs *everything* (Infra+K8s+App+Seed) |
+| **3. Config** | `scripts/load-env.sh` | Loads IPs from Terraform to scripts |
 | **4. K8s** | `scripts/k8s-deployment/` | K8s manifest syncing & deploying |
 | **5. Verify** | `scripts/monitoring/` | Check Grafana/Prometheus health |
-| **6. Enterprise** | `scripts/enterprise-features/` | Phase 2 features (Velero, Vault, Cert-Manager) |
+| **6. Enterprise** | `scripts/enterprise-features/` | Enterprise features (Velero, Vault, Cert-Manager) |
 
 ---
 
-## ✅ Phase 1: Pre-Deployment Check (First 5 Mins)
+## ✅ Phase 1: Pre-Deployment Check
 
 Before running any script, ensure your environment is clean and ready.
 
@@ -30,7 +30,7 @@ Before running any script, ensure your environment is clean and ready.
 2.  **Verify Project Root**:
     You must always start from the root:
     ```bash
-    cd ~/DhakaCart-03-test
+    cd ~/DhakaCart-Final-Project
     ```
 
 ---
@@ -46,13 +46,13 @@ We use a smart, resumable master script to handle 95% of the work.
 
 **Command:**
 ```bash
-./scripts/deploy-4-hour-window.sh
+./deploy-full-stack.sh
 ```
 
 **Options:**
 - `force`: Restart from the beginning (Warning: Clears state).
   ```bash
-  ./scripts/deploy-4-hour-window.sh --force
+  ./deploy-full-stack.sh --force
   ```
 
 **What the script does (Steps 1-7):**
@@ -104,13 +104,13 @@ cd ../../testing/load-tests
 
 ---
 
-## 🏢 Phase 4: Exam Compliance: Enterprise Features
+## 🏢 Phase 4: Enterprise Features
 
-To meet the **10 Constraints** of the exam, you MUST run these scripts after the main deployment.
+To meet enterprise compliance requirements, run these scripts after the main deployment.
 
 ### 1. Enable Automated Backups (Velero)
 > **⚠️ Run on Master Node:**
-> `ssh -i terraform/simple-k8s/dhakacart-k8s-key.pem ubuntu@<MASTER_IP>`
+> `ssh -i terraform/aws-infra/dhakacart-k8s-key.pem ubuntu@<MASTER_IP>`
 
 ```bash
 cd scripts/enterprise-features
@@ -134,28 +134,28 @@ cd scripts/enterprise-features
 
 If the automated script stops, check the error message.
 - **Fix the specific error**.
-- **Re-run `./scripts/deploy-4-hour-window.sh`** to resume.
+- **Re-run `./deploy-full-stack.sh`** to resume.
 
 | Error | Fix |
 |-------|-----|
-| **Terraform Lock** | `cd terraform/simple-k8s && terraform force-unlock <ID>` |
-| **SSH Permission** | `chmod 600 terraform/simple-k8s/dhakacart-k8s-key.pem` |
+| **Terraform Lock** | `cd terraform/aws-infra && terraform force-unlock <ID>` |
+| **SSH Permission** | `chmod 600 terraform/aws-infra/dhakacart-k8s-key.pem` |
 | **DB Not Seeding** | Run `./scripts/database/seed-database.sh --automated` manually |
 | **Grafana 404** | Run `scripts/monitoring/setup-grafana-alb.sh` |
 | **Loki No Logs** | `kubectl rollout restart ds/promtail -n monitoring` |
 
 ---
 
-## 🧹 Cleanup (End of 4-Hour Window)
+## 🧹 Cleanup
 
 **CRITICAL**: Destroy resources to avoid extra bills.
 
 ```bash
-cd ~/DhakaCart-03-test/terraform/simple-k8s
+cd ~/DhakaCart-Final-Project/terraform/aws-infra
 terraform destroy -auto-approve
 ```
 
 ---
 
-**Last Updated**: 10 December 2025
-**Guide Version**: 3.0 (Smart Resumable Automation)
+**Last Updated**: 12 December 2025
+**Guide Version**: 3.1 (Professional Standard)

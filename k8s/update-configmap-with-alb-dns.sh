@@ -7,7 +7,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TERRAFORM_DIR="$SCRIPT_DIR/../terraform/simple-k8s"
+TERRAFORM_DIR="$SCRIPT_DIR/../terraform/aws-infra"
 CONFIGMAP_FILE="$SCRIPT_DIR/configmaps/app-config.yaml"
 CONFIGMAP_TEMPLATE="$SCRIPT_DIR/configmaps/app-config.yaml.template"
 

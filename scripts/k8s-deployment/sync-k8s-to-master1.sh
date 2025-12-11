@@ -23,11 +23,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Load infrastructure config
-source "$PROJECT_ROOT/scripts/load-infrastructure-config.sh"
+source "$PROJECT_ROOT/scripts/load-env.sh"
 
 BASTION_IP="$BASTION_IP"
 MASTER1_IP="${MASTER_IPS[0]}"
-SSH_KEY_PATH="$PROJECT_ROOT/terraform/simple-k8s/dhakacart-k8s-key.pem"
+SSH_KEY_PATH="$PROJECT_ROOT/terraform/aws-infra/dhakacart-k8s-key.pem"
 REMOTE_USER="ubuntu"
 
 echo -e "${BLUE}===========================================${NC}"

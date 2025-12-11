@@ -31,7 +31,7 @@ else
 fi
 
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TERRAFORM_DIR="$PROJECT_ROOT/terraform/simple-k8s"
+TERRAFORM_DIR="$PROJECT_ROOT/terraform/aws-infra"
 
 # Check if terraform directory exists
 if [ ! -d "$TERRAFORM_DIR" ]; then

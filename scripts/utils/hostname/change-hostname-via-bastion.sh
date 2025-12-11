@@ -15,7 +15,7 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Configuration
-TERRAFORM_DIR="/home/arif/DhakaCart-03-test/terraform/simple-k8s"
+TERRAFORM_DIR="/home/arif/DhakaCart-Final-Project/terraform/aws-infra"
 SSH_KEY_NAME="dhakacart-k8s-key.pem"
 SSH_KEY_LOCAL="./${SSH_KEY_NAME}"
 SSH_KEY_BASTION="~/.ssh/${SSH_KEY_NAME}"

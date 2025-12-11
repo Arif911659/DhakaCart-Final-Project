@@ -56,7 +56,7 @@ EOF
 chmod +x /tmp/apply-network-policies.sh
 
 # Load infrastructure config
-source "$PROJECT_ROOT/scripts/load-infrastructure-config.sh" 2>/dev/null || {
+source "$PROJECT_ROOT/scripts/load-env.sh" 2>/dev/null || {
     echo -e "${RED}❌ Could not load infrastructure config${NC}"
     echo -e "${YELLOW}ℹ️  Run from terraform directory: terraform output${NC}"
     exit 1

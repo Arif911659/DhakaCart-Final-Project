@@ -6,7 +6,7 @@ This document provides a comprehensive overview of the file structure, describin
 ## 📂 Directory Tree
 
 ```
-DhakaCart-03-test/
+DhakaCart-Final-Project/
 ├── 📂 .github/                         # CI/CD & GitHub Configuration
 │   └── 📂 workflows/
 │       ├── cd.yml                      # Continuous Deployment (Tunneling)
@@ -22,7 +22,7 @@ DhakaCart-03-test/
 │   │   ├── frontend.yaml               # React Frontend
 │   │   ├── postgres.yaml               # Database
 │   │   └── redis.yaml                  # Caching
-│   ├── 📂 enterprise-features/         # [Phase 2] Enterprise Capabilities
+│   ├── 📂 enterprise-features/         # Enterprise Capabilities
 │   │   ├── 📂 cert-manager/            # HTTPS/SSL
 │   │   ├── 📂 vault/                   # Secrets Management
 │   │   └── 📂 velero/                  # Backup Schedules
@@ -47,19 +47,19 @@ DhakaCart-03-test/
 │   │   ├── db-service.yaml
 │   │   ├── frontend-service.yaml
 │   │   └── redis-service.yaml
-│   ├── deploy-prod.sh                  # 🚀 Operations: Apply all manifests
+│   ├── apply-manifests.sh              # 🚀 Operations: Apply all manifests
 │   └── hpa.yaml                        # Horizontal Pod Autoscaling
 │
 ├── 📂 scripts/                         # Automation & Operations (The "Logic")
 │   ├── 📂 database/                    # DB Maintenance
 │   │   ├── diagnose-db-products-issue.sh
 │   │   └── seed-database.sh
-│   ├── 📂 enterprise-features/         # [Phase 2] Installers
+│   ├── 📂 enterprise-features/         # Enterprise Installers
 │   │   ├── install-cert-manager.sh
 │   │   ├── install-vault.sh
 │   │   ├── install-velero.sh
 │   │   └── minio-manifests.yaml        # S3-compatible backend for Velero
-│   ├── 📂 internal/                    # Internal Helpers
+│   ├── 📂 utils/                       # Utility Scripts
 │   │   └── 📂 hostname/                # Node Naming
 │   ├── 📂 k8s-deployment/              # Deployment Helpers
 │   │   ├── copy-k8s-to-master1.sh
@@ -70,19 +70,17 @@ DhakaCart-03-test/
 │   │   ├── deploy-alerting-stack.sh
 │   │   ├── fix-grafana-config.sh
 │   │   └── setup-grafana-alb.sh
-│   ├── 📂 nodes-config/                # Cluster Bootstrapping
+│   ├── 📂 provisioning/                # Infrastructure Provisioning
 │   │   ├── extract-terraform-outputs.sh
-│   │   ├── generate-scripts.sh         # Generates Kubeadm commands
+│   │   ├── generate-node-scripts.sh    # Generates Kubeadm commands
 │   │   └── upload-to-bastion.sh
 │   ├── 📂 security/                    # Security Automation
 │   │   └── apply-security-hardening.sh
-│   ├── deploy-4-hour-window.sh         # 🚀 MASTER SCRIPT: 0 to Production
-│   ├── .deploy_state                   # 🔄 State tracking for Resume Capability
-│   ├── fetch-kubeconfig.sh             # CI/CD Helper
-│   └── load-infrastructure-config.sh   # State Loader
+│   ├── load-env.sh                     # Environment Loader
+│   └── fetch-kubeconfig.sh             # CI/CD Helper
 │
 ├── 📂 terraform/                       # Infrastructure as Code (AWS)
-│   └── 📂 simple-k8s/
+│   └── 📂 aws-infra/
 │       ├── main.tf                     # Core Infrastructure
 │       ├── outputs.tf                  # IP/DNS Exports
 │       ├── variables.tf                # Region/Instance Config
@@ -95,11 +93,13 @@ DhakaCart-03-test/
 │
 ├── 📂 backend/                         # Application Source (Node.js)
 ├── 📂 frontend/                        # Application Source (React)
+├── 📄 deploy-full-stack.sh             # 🚀 MASTER SCRIPT: 0 to Production
 │
-├── 📄 4-HOUR-DEPLOYMENT.md             # ⏱️ Quick Deployment Runbook
-├── 📄 DEPLOYMENT-GUIDE.md              # 📚 Full Detailed Guide
-
-├── 📄 PHASE-2-TECH-SPEC.md             # � Enterprise Features Guide
+├── 📄 FULL-DEPLOYMENT-GUIDE.md         # 📚 Full Detailed Guide
+├── 📄 DEPLOYMENT-GUIDE.md              # 📚 Legacy Guide (Reference)
+├── 📄 RELEASE-RUNBOOK.md               # 📦 Release Guide
+│
+├── 📄 PHASE-2-TECH-SPEC.md             # 🏛️ Enterprise Features Guide
 ├── 📄 PROJECT-STRUCTURE.md             # 🗺️ This File
 ├── 📄 QUICK-REFERENCE.md               # ⚡ Cheat Sheet
 └── 📄 README.md                        # 🏠 Project Homepage
@@ -107,17 +107,17 @@ DhakaCart-03-test/
 
 ## 🧩 Component Descriptions
 
-### 1. Automation Core (`scripts/`)
-*   **`deploy-4-hour-window.sh`**: The orchestrator. It calls Terraform, configures nodes, deploys K8s, and **auto-seeds** the DB. Features **Smart Resume** to recover from interruptions.
-*   **`enterprise-features/`**: Scripts to install Phase 2 tools (Backup, Security) *after* the main deployment.
-*   **`nodes-config/`**: Handles the complex logic of `kubeadm init` and `kubeadm join` ensuring nodes connect correctly.
+### 1. Automation Core (`scripts/` & Root)
+*   **`deploy-full-stack.sh`**: The orchestrator. It calls Terraform, configures nodes, deploys K8s, and **auto-seeds** the DB. Features **Smart Resume** to recover from interruptions.
+*   **`enterprise-features/`**: Scripts to install enterprise tools (Backup, Security) *after* the main deployment.
+*   **`provisioning/`**: Handles the complex logic of `kubeadm init` and `kubeadm join` ensuring nodes connect correctly.
 
 ### 2. Infrastructure (`terraform/`)
-*   **`simple-k8s/`**: A simplified, flat Terraform structure designed for speed and reliability in the exam.
-*   **Static IPs**: Hardcoded in `main.tf` to ensure predictable internal networking (a key "Lean" feature).
+*   **`aws-infra/`**: Production-ready Terraform structure.
+*   **Static IPs**: Hardcoded in `main.tf` to ensure predictable internal networking.
 
 ### 3. Orchestration (`k8s/`)
-*   **`deploy-prod.sh`**: Located inside `k8s/`, this script applies the YAML files in the correct order (ConfigMaps -> Secrets -> Services -> Deployments).
+*   **`apply-manifests.sh`**: Located inside `k8s/`, this script applies the YAML files in the correct order (ConfigMaps -> Secrets -> Services -> Deployments).
 *   **`monitoring/`**: A complete observability stack (Prometheus, Grafana, Loki) defined as code.
 
 ### 4. CI/CD (`.github/`)

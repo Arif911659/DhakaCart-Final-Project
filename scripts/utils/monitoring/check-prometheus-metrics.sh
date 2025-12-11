@@ -18,10 +18,10 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 BASTION_IP="54.251.183.40"
 MASTER1_IP="10.0.10.82"
-SSH_KEY_PATH="$PROJECT_ROOT/terraform/simple-k8s/dhakacart-k8s-key.pem"
+SSH_KEY_PATH="$PROJECT_ROOT/terraform/aws-infra/dhakacart-k8s-key.pem"
 REMOTE_USER="ubuntu"
 
 echo -e "${BLUE}===========================================${NC}"

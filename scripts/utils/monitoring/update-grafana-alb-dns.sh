@@ -21,10 +21,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Source infrastructure variables
-if [ -f "$PROJECT_ROOT/scripts/load-infrastructure-config.sh" ]; then
-    source "$PROJECT_ROOT/scripts/load-infrastructure-config.sh"
+if [ -f "$PROJECT_ROOT/scripts/load-env.sh" ]; then
+    source "$PROJECT_ROOT/scripts/load-env.sh"
 else
-    echo -e "${RED}❌ Infrastructure config loader not found at $PROJECT_ROOT/scripts/load-infrastructure-config.sh${NC}"
+    echo -e "${RED}❌ Infrastructure config loader not found at $PROJECT_ROOT/scripts/load-env.sh${NC}"
     exit 1
 fi
 

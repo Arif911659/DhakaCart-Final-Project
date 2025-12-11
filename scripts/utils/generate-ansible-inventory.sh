@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Source infrastructure config
-source "$SCRIPT_DIR/load-infrastructure-config.sh"
+source "$PROJECT_ROOT/scripts/load-env.sh"
 
 INVENTORY_FILE="$PROJECT_ROOT/ansible/inventory/hosts.ini"
 mkdir -p "$(dirname "$INVENTORY_FILE")"

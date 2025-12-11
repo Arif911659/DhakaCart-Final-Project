@@ -17,7 +17,7 @@ Transforms a fragile single-machine setup into a resilient, scalable, cloud-nati
 - [🎯 Project Overview](#-project-overview)
 - [🔄 Transformation Summary](#-transformation-summary)
 - [🏗️ Architecture](#-architecture)
-- [✅ Exam Requirements Coverage](#-exam-requirements-coverage)
+- [✅ Enterprise Compliance](#-enterprise-compliance)
 - [🚀 Quick Start (DEPLOY HERE)](#-quick-start)
 - [✨ Key Features](#-key-features)
 - [📦 Technology Stack](#-technology-stack)
@@ -185,7 +185,7 @@ Transforms a fragile single-machine setup into a resilient, scalable, cloud-nati
 
 ---
 
-## ✅ Exam Requirements Coverage
+## ✅ Enterprise Compliance
 
 This project meets **all 10 exam requirements** from the DhakaCart E-Commerce Reliability Challenge:
 
@@ -199,7 +199,7 @@ This project meets **all 10 exam requirements** from the DhakaCart E-Commerce Re
 | **6** | **Security & Compliance** | ✅ | Vault (secrets), Cert-Manager (HTTPS), Network Policies, RBAC |
 | **7** | **Database Backup & Recovery** | ✅ | Velero + MinIO, Daily automated backups, Disaster recovery |
 | **8** | **Infrastructure as Code** | ✅ | Terraform, Version-controlled, Reproducible setup |
-| **9** | **Automation & Operations** | ✅ | deploy-4-hour-window.sh, Automated node config, One-command deploy |
+| **9** | **Automation & Operations** | ✅ | deploy-full-stack.sh, Automated node config, One-command deploy |
 | **10** | **Documentation & Runbooks** | ✅ | Architecture diagrams, Setup guides, Troubleshooting, Runbooks |
 
 
@@ -212,7 +212,7 @@ Choose your deployment method. **Option 1 is recommended** for the full experien
 
 ### ✅ Option 1: Automated AWS Deployment (Recommended)
 
-This uses our **Smart Resumable Deployment Script** (`deploy-4-hour-window.sh`) to provision infrastructure, configure K8s, deploy the app, and seed the database in one go.
+This uses our **Smart Resumable Deployment Script** (`deploy-full-stack.sh`) to provision infrastructure, configure K8s, deploy the app, and seed the database in one go.
 
 **Features:**
 - 🔄 **Auto-Resume**: Picks up where it left off if interrupted
@@ -220,22 +220,22 @@ This uses our **Smart Resumable Deployment Script** (`deploy-4-hour-window.sh`) 
 - ✅ **Verification**: Checks system health after deployment
 - ⚡ **Fast**: Complete deployment in <10 minutes
 
-> **📄 Detailed Guide:** [4-HOUR-DEPLOYMENT.md](./4-HOUR-DEPLOYMENT.md)
+> **📄 Detailed Guide:** [FULL-DEPLOYMENT-GUIDE.md](./FULL-DEPLOYMENT-GUIDE.md)
 
 ```bash
 # 1. Clone & Setup
 git clone https://github.com/Arif911659/DhakaCart-03.git
-cd DhakaCart-03-test
+cd DhakaCart-Final-Project
 
 # 2. Configure AWS Credentials
 aws configure
 
 # 3. Run Automation Script
-./scripts/deploy-4-hour-window.sh
+./deploy-full-stack.sh
 
 # 4. Access Application
 # Get ALB DNS from Terraform output
-terraform -chdir=terraform/simple-k8s output load_balancer_dns
+terraform -chdir=terraform/aws-infra output load_balancer_dns
 # Open in browser: http://<ALB_DNS>/
 ```
 
@@ -297,7 +297,7 @@ kubectl get all -n monitoring
   - Security groups and firewall rules
 
 - **Deployment Automation**: One-command deployment
-  - `scripts/deploy-4-hour-window.sh` - Master deployment script
+  - `deploy-full-stack.sh` - Master deployment script
   - Smart resume capability
   - Automatic database seeding
   - Health verification
@@ -399,13 +399,12 @@ We have organized implementation guides for every component:
 
 | Documentation | Description |
 |---------------|-------------|
-
-| [**📄 4-HOUR-DEPLOYMENT.md**](./4-HOUR-DEPLOYMENT.md) | **Start Here** - Master automation guide for AWS deployment |
+| [**📄 FULL-DEPLOYMENT-GUIDE.md**](./FULL-DEPLOYMENT-GUIDE.md) | **Start Here** - Master automation guide for AWS deployment |
 | [**📄 DEPLOYMENT-GUIDE.md**](./DEPLOYMENT-GUIDE.md) | Detailed manual step-by-step generic deployment guide |
 | [**📄 QUICK-REFERENCE.md**](./QUICK-REFERENCE.md) | Cheat sheet for common commands |
 | [**📄 PROJECT-STRUCTURE.md**](./PROJECT-STRUCTURE.md) | Complete project structure and file organization |
 | [**📄 docs/SECURITY-AND-TESTING-GUIDE.md**](./docs/SECURITY-AND-TESTING-GUIDE.md) | Security hardening and testing instructions |
-| [**📂 terraform/README.md**](./terraform/README.md) | Infrastructure as Code details |
+| [**📂 terraform/README.md**](./terraform/aws-infra/README.md) | Infrastructure as Code details |
 | [**📂 docs/architecture/**](./docs/architecture/) | System architecture documentation |
 | [**📂 testing/**](./testing/README.md) | Load testing guide (K6) |
 
@@ -414,17 +413,18 @@ We have organized implementation guides for every component:
 ## 📁 Project Structure
 
 ```
-DhakaCart-03-test/
+DhakaCart-Final-Project/
+├── deploy-full-stack.sh          # 🚀 MASTER SCRIPT: 0 to Production
 ├── scripts/                      # 🤖 Automation central
-│   ├── deploy-4-hour-window.sh   # Main deployment script (One-command deploy)
-│   ├── load-infrastructure-config.sh
+│   ├── load-env.sh               # Configuration loader
+│   ├── provisioning/             # Infrastructure provisioning
 │   ├── k8s-deployment/           # K8s sync scripts
 │   ├── enterprise-features/     # Velero, Vault installation
 │   ├── security/                 # Hardening scripts
 │   └── monitoring/              # Observability setup
 │
 ├── terraform/                    # 🏗️ Infrastructure as Code
-│   └── simple-k8s/              # AWS infrastructure (VPC, EC2, ALB)
+│   └── aws-infra/               # AWS infrastructure (VPC, EC2, ALB)
 │       ├── main.tf              # Main infrastructure
 │       ├── alb-backend-config.tf # ALB configuration
 │       └── variables.tf         # Configuration variables
@@ -442,6 +442,7 @@ DhakaCart-03-test/
 │   ├── monitoring/               # Prometheus, Grafana, Loki
 │   ├── enterprise-features/      # Vault, Velero, Cert-Manager
 │   └── security/                # Network policies
+│   └── apply-manifests.sh       # Script to apply all manifests
 │
 ├── .github/                       # 🔄 CI/CD Pipeline
 │   └── workflows/

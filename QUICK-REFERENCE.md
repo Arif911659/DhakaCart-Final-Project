@@ -5,7 +5,7 @@ One-page cheat sheet for common operations and commands.
 ## 🚀 Quick Start (After Terraform Apply)
 
 ```bash
-cd /home/arif/DhakaCart-03-test/scripts
+cd /home/arif/DhakaCart-Final-Project/scripts
 ./post-terraform-setup.sh
 ```
 
@@ -17,7 +17,7 @@ cd /home/arif/DhakaCart-03-test/scripts
 
 ```bash
 # Get Bastion IP
-cd terraform/simple-k8s
+cd terraform/aws-infra
 terraform output bastion_public_ip
 
 # Get ALB DNS
@@ -225,14 +225,14 @@ scripts/
 │
 ├── k8s-deployment/                  # Kubernetes deployment
 │   ├── update-and-deploy.sh         # Deploy/update application
-│   ├── copy-k8s-to-master1.sh       # Copy manifests
+
 │   └── sync-k8s-to-master1.sh       # Sync manifests
 │
 ├── database/                        # Database scripts
 │   ├── seed-database.sh             # Seed database
 │   └── diagnose-db-issues.sh        # Diagnose DB issues
 │
-├── internal/hostname/           # Hostname management
+├── utils/hostname/           # Hostname management
 │   ├── change-hostname.sh           # Local hostname change
 │   └── change-hostname-via-bastion.sh  # Remote via Bastion
 │
@@ -364,7 +364,7 @@ cd ../../scripts
 
 ## 📚 Documentation Links
 
-- **Full Deployment Guide**: [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md)
+- **Full Deployment Guide**: [FULL-DEPLOYMENT-GUIDE.md](FULL-DEPLOYMENT-GUIDE.md)
 - **Troubleshooting**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 - **Loki Troubleshooting**: [docs/LOKI-TROUBLESHOOTING.md](docs/LOKI-TROUBLESHOOTING.md)
 - **Hostname Change**: [scripts/README-hostname-change.md](scripts/README-hostname-change.md)
@@ -375,12 +375,12 @@ cd ../../scripts
 
 1. **Always source config before running scripts**:
    ```bash
-   source scripts/load-infrastructure-config.sh
+   source scripts/load-env.sh
    ```
 
 2. **Use dry-run for testing**:
    ```bash
-   ./change-hostname-via-bastion.sh --dry-run
+   ./scripts/utils/hostname/change-hostname-via-bastion.sh --dry-run
    ```
 
 3. **Check logs first when debugging**:
@@ -405,12 +405,12 @@ cd ../../scripts
 
 | File | Purpose |
 |------|---------|
-| `terraform/simple-k8s/dhakacart-k8s-key.pem` | SSH private key |
-| `terraform/simple-k8s/terraform.tfstate` | Terraform state |
-| `scripts/load-infrastructure-config.sh` | Config loader |
+| `terraform/aws-infra/dhakacart-k8s-key.pem` | SSH private key |
+| `terraform/aws-infra/terraform.tfstate` | Terraform state |
+| `scripts/load-env.sh` | Config loader |
 | `k8s/` | Kubernetes manifests |
 
 ---
 
-**Last Updated**: 2025-12-07  
+**Last Updated**: 2025-12-12  
 **Version**: 1.0

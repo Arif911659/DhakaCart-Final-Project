@@ -76,7 +76,7 @@ main() {
     # Step 1: Load infrastructure config
     print_step 1 6 "Loading infrastructure configuration from Terraform..."
     
-    if ! source "$SCRIPT_DIR/load-infrastructure-config.sh"; then
+    if ! source "$SCRIPT_DIR/load-env.sh"; then
         print_message "$RED" "Failed to load infrastructure configuration"
         print_message "$YELLOW" "Please ensure 'terraform apply' has been run successfully"
         exit 1
@@ -105,7 +105,7 @@ main() {
         # List of scripts to update
         local scripts_to_update=(
             "database/seed-database.sh"
-            "database/diagnose-db-products-issue.sh"
+            "utils/database/diagnose-db-products-issue.sh"
             "monitoring/apply-prometheus-fix.sh"
             "monitoring/check-prometheus-metrics.sh"
             "monitoring/fix-grafana-config.sh"
@@ -114,9 +114,9 @@ main() {
             "update-alb-dns-dynamic.sh"
             "monitoring/update-grafana-alb-dns.sh"
             "k8s-deployment/update-and-deploy.sh"
-            "k8s-deployment/copy-k8s-to-master1.sh"
+
             "k8s-deployment/sync-k8s-to-master1.sh"
-            "k8s-deployment/update-configmap-with-lb.sh"
+            "utils/k8s-deployment/update-configmap-with-lb.sh"
         )
         
         local updated_count=0
@@ -152,8 +152,8 @@ main() {
     if confirm "Do you want to change hostnames (Bastion, Master-1/2, Worker-1/2/3)?" "n"; then
         print_message "$CYAN" "Running hostname change script..."
         
-        if [ -f "$SCRIPT_DIR/hostname/change-hostname-via-bastion.sh" ]; then
-            "$SCRIPT_DIR/hostname/change-hostname-via-bastion.sh"
+        if [ -f "$SCRIPT_DIR/utils/hostname/change-hostname-via-bastion.sh" ]; then
+            "$SCRIPT_DIR/utils/hostname/change-hostname-via-bastion.sh"
         else
             print_message "$RED" "Hostname change script not found"
         fi

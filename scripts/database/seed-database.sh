@@ -19,7 +19,7 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Load infrastructure config
-source "$PROJECT_ROOT/load-infrastructure-config.sh"
+source "$PROJECT_ROOT/scripts/load-env.sh"
 
 BASTION_IP="$BASTION_IP"
 MASTER1_IP="${MASTER_IPS[0]}" # Assuming first master

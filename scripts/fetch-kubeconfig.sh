@@ -11,7 +11,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Source config loader
 if [ -f "$SCRIPT_DIR/load-infrastructure-config.sh" ]; then
-    source "$SCRIPT_DIR/load-infrastructure-config.sh"
+    source "$PROJECT_ROOT/scripts/load-env.sh"
 else
     echo "Error: Config loader not found at $SCRIPT_DIR/load-infrastructure-config.sh"
     exit 1
