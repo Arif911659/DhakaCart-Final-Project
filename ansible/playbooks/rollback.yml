@@ -1,0 +1,103 @@
+---
+# Rollback Playbook for DhakaCart
+# Reverts to previous version in case of deployment issues
+
+- name: Rollback DhakaCart Application
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    app_dir: /opt/dhakacart
+    backup_dir: /opt/dhakacart-backups
+  
+  tasks:
+    - name: Display rollback warning
+      debug:
+        msg: "⚠️  WARNING: Rolling back {{ inventory_hostname }} to previous version"
+    
+    - name: Confirm rollback
+      pause:
+        prompt: "Press ENTER to continue with rollback, or Ctrl+C to cancel"
+      when: not auto_rollback | default(false)
+    
+    - name: Stop current application
+      docker_compose:
+        project_src: "{{ app_dir }}"
+        state: absent
+      tags: ['rollback']
+    
+    - name: Check for previous version backup
+      stat:
+        path: "{{ backup_dir }}/previous"
+      register: previous_backup
+    
+    - name: Restore previous version
+      command: "rsync -av {{ backup_dir }}/previous/ {{ app_dir }}/"
+      when: previous_backup.stat.exists
+      tags: ['rollback']
+    
+    - name: Checkout previous git commit
+      shell: |
+        cd {{ app_dir }}
+        git log -2 --format="%H" | tail -1 | xargs git checkout
+      become_user: dhakacart
+      when: not previous_backup.stat.exists
+      tags: ['rollback']
+    
+    - name: Pull previous Docker images
+      docker_image:
+        name: "{{ item }}"
+        tag: previous
+        source: pull
+      loop:
+        - "arifhossaincse22/dhakacart-backend"
+        - "arifhossaincse22/dhakacart-frontend"
+      ignore_errors: yes
+      tags: ['rollback']
+    
+    - name: Start application with previous version
+      docker_compose:
+        project_src: "{{ app_dir }}"
+        files:
+          - docker-compose.prod.yml
+        state: present
+      tags: ['rollback']
+    
+    - name: Wait for application to be ready
+      uri:
+        url: "http://localhost:5000/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 30
+      delay: 2
+      tags: ['rollback', 'verify']
+    
+    - name: Verify rollback
+      uri:
+        url: "http://localhost:5000/api/products"
+        return_content: yes
+      register: api_test
+      tags: ['rollback', 'verify']
+    
+    - name: Display rollback status
+      debug:
+        msg: "✓ Rollback completed successfully on {{ inventory_hostname }}"
+      tags: ['rollback']
+    
+    - name: Log rollback
+      shell: |
+        echo "$(date): Rollback performed on {{ inventory_hostname }}" >> /var/log/dhakacart/rollbacks.log
+      tags: ['rollback']
+    
+    - name: Send rollback notification
+      mail:
+        host: localhost
+        port: 25
+        to: admin@dhakacart.com
+        subject: "🔄 Rollback performed on {{ inventory_hostname }}"
+        body: "Application rolled back at {{ ansible_date_time.iso8601 }}"
+      ignore_errors: yes
+      tags: ['notify']
+

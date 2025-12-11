@@ -1,0 +1,10 @@
+server:
+  dev:
+    enabled: true # DEV mode: Stores secrets in memory, not suitable for real prod but perfect for demo
+  authDelegator:
+    enabled: true
+injector:
+  enabled: true # Enables sidecar injection
+ui:
+  enabled: true
+  serviceType: LoadBalancer # Expose UI for Video Demo

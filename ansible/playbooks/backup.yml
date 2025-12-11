@@ -1,0 +1,110 @@
+---
+# Backup Playbook for DhakaCart
+# Runs backup scripts on database servers
+
+- name: Backup DhakaCart Databases
+  hosts: databases
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    backup_dir: /backups
+    scripts_dir: /opt/dhakacart/scripts/backup
+  
+  tasks:
+    - name: Display backup information
+      debug:
+        msg: "Running backups on {{ inventory_hostname }}"
+    
+    - name: Ensure backup directory exists
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: dhakacart
+        group: dhakacart
+        mode: '0755'
+    
+    - name: Copy backup scripts
+      copy:
+        src: "../../scripts/backup/"
+        dest: "{{ scripts_dir }}/"
+        owner: dhakacart
+        group: dhakacart
+        mode: '0755'
+    
+    - name: Run PostgreSQL backup
+      command: "{{ scripts_dir }}/backup-postgres.sh"
+      environment:
+        BACKUP_DIR: "{{ backup_dir }}"
+        POSTGRES_HOST: localhost
+        POSTGRES_USER: dhakacart
+        POSTGRES_DB: dhakacart_db
+        POSTGRES_PASSWORD: "{{ vault_db_password }}"
+      become_user: dhakacart
+      register: postgres_backup
+      tags: ['postgres']
+    
+    - name: Display PostgreSQL backup result
+      debug:
+        var: postgres_backup.stdout_lines
+      tags: ['postgres']
+    
+    - name: Run Redis backup
+      command: "{{ scripts_dir }}/backup-redis.sh"
+      environment:
+        BACKUP_DIR: "{{ backup_dir }}"
+        REDIS_HOST: localhost
+      become_user: dhakacart
+      register: redis_backup
+      tags: ['redis']
+    
+    - name: Display Redis backup result
+      debug:
+        var: redis_backup.stdout_lines
+      tags: ['redis']
+    
+    - name: List recent backups
+      find:
+        paths: "{{ backup_dir }}"
+        patterns: "*.gz"
+        age: -7d
+      register: recent_backups
+    
+    - name: Display recent backups
+      debug:
+        msg: "Found {{ recent_backups.matched }} backups from last 7 days"
+    
+    - name: Upload backups to S3 (optional)
+      aws_s3:
+        bucket: dhakacart-backups
+        object: "{{ inventory_hostname }}/{{ item.path | basename }}"
+        src: "{{ item.path }}"
+        mode: put
+      loop: "{{ recent_backups.files }}"
+      when: aws_s3_enabled | default(false)
+      tags: ['s3']
+    
+    - name: Clean old backups (> 30 days)
+      find:
+        paths: "{{ backup_dir }}"
+        patterns: "*.gz"
+        age: 30d
+      register: old_backups
+    
+    - name: Remove old backups
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_backups.files }}"
+      when: old_backups.matched > 0
+    
+    - name: Send backup notification
+      mail:
+        host: localhost
+        port: 25
+        to: admin@dhakacart.com
+        subject: "Backup completed on {{ inventory_hostname }}"
+        body: "Backups completed successfully at {{ ansible_date_time.iso8601 }}"
+      ignore_errors: yes
+      tags: ['notify']
+

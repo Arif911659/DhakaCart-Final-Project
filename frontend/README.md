@@ -1,16 +1,48 @@
-# React + Vite
+# ⚛️ DhakaCart Frontend (UI)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**এটি কি? (What is this?)**
+এটি ক্লায়েন্ট সাইড অ্যাপ্লিকেশন যা ইউজার ব্রাউজারে দেখে। এটি `React.js` দিয়ে তৈরি।
 
-Currently, two official plugins are available:
+**কেন এটি দরকার? (Why do we need this?)**
+- ইউজার ইন্টারফেস (UI) রেন্ডার করা (প্রোডাক্ট লিস্ট, কার্ট)।
+- ব্যাকএন্ড API-এর সাথে যোগাযোগ করা।
+- রেসপন্সিভ ডিজাইন (মোবাইল ও ডেক্সটপ ফ্রেন্ডলি)।
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## ⚙️ Technical Details
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Component | Technology | Port | Purpose |
+|-----------|------------|------|---------|
+| **Framework**| React.js | **3000** (Internal) | User Interface |
+| **Server** | Nginx | 80 | Static File Serving |
+| **Exposure** | NodePort | **30080** | External Access |
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 📂 ফাইল স্ট্রাকচার (File Structure)
+
+```
+frontend/
+├── src/                # সোর্স কোড (Components, Pages)
+├── public/             # স্ট্যাটিক অ্যাসেটস (Images, Icons)
+├── Dockerfile          # প্রোডাকশন বিল্ড এবং Nginx সেটআপ
+└── package.json        # ডিপেন্ডেন্সি লিস্ট
+```
+
+---
+
+## 🚀 কিভাবে রান করবেন? (How to Run)
+
+### লোকাল মেশিনে (Local):
+```bash
+npm install
+npm start
+```
+*Browser: http://localhost:3000*
+
+### ডকার দিয়ে (Docker):
+```bash
+docker build -t dhakacart-frontend .
+docker run -p 30080:80 dhakacart-frontend
+```

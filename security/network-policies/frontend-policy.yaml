@@ -1,0 +1,63 @@
+# Network Policy for Frontend
+# Restricts frontend pod network access
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dhakacart-frontend-policy
+  namespace: dhakacart
+spec:
+  podSelector:
+    matchLabels:
+      app: dhakacart-frontend
+      tier: frontend
+  
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  # Ingress rules - who can connect to frontend
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+    
+    # Allow from same namespace (for debugging)
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 80
+  
+  # Egress rules - what frontend can connect to
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+    
+    # Allow connection to backend API
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: dhakacart
+      ports:
+        - protocol: TCP
+          port: 5000
+    
+    # Allow HTTPS outbound (for external APIs if needed)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+

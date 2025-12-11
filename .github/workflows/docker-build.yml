@@ -1,0 +1,103 @@
+name: Docker Build and Push
+
+# This workflow builds and pushes Docker images
+# Can be triggered manually or on schedule
+
+on:
+  # Manual trigger (workflow_dispatch)
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image version tag (e.g., v1.0.1)'
+        required: false
+        default: 'latest'
+      push:
+        description: 'Push to Docker Hub?'
+        type: boolean
+        default: true
+  
+  # Schedule: Build every day at 2 AM UTC (optional)
+  schedule:
+    - cron: '0 2 * * *'
+
+env:
+  DOCKER_REGISTRY: docker.io
+  BACKEND_IMAGE: arifhossaincse22/dhakacart-backend
+  FRONTEND_IMAGE: arifhossaincse22/dhakacart-frontend
+
+jobs:
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: Determine version tag
+      - name: Get version tag
+        id: version
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [ "${{ github.ref_type }}" == "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="latest"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building images with tag: $VERSION"
+      
+      # Step 3: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      # Step 4: Login to Docker Hub (if pushing)
+      - name: Login to Docker Hub
+        if: ${{ github.event.inputs.push != 'false' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      # Step 5: Build backend image
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: ${{ github.event.inputs.push != 'false' }}
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.BACKEND_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.BACKEND_IMAGE }}:latest
+          cache-to: type=inline
+          platforms: linux/amd64
+      
+      # Step 6: Build frontend image
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: ${{ github.event.inputs.push != 'false' }}
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:latest
+          cache-to: type=inline
+          platforms: linux/amd64
+      
+      # Step 7: Summary
+      - name: Build summary
+        run: |
+          echo "✅ Docker images built successfully!"
+          echo "Backend: ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.VERSION }}"
+          echo "Frontend: ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.VERSION }}"
+          if [ "${{ github.event.inputs.push }}" != "false" ]; then
+            echo "📦 Images pushed to Docker Hub"
+          else
+            echo "📦 Images built locally (not pushed)"
+          fi
+

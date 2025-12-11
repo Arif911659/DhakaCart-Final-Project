@@ -1,0 +1,113 @@
+---
+# Deployment Playbook for DhakaCart
+# Deploys or updates the application
+
+- name: Deploy DhakaCart Application
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    app_dir: /opt/dhakacart
+    repo_url: https://github.com/yourusername/dhakacart.git
+    branch: main
+    docker_compose_version: "2.23.0"
+  
+  tasks:
+    - name: Display deployment information
+      debug:
+        msg: "Deploying to {{ inventory_hostname }} ({{ env }} environment)"
+    
+    - name: Pull latest code from repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: "{{ branch }}"
+        force: yes
+      become_user: dhakacart
+      tags: ['deploy', 'update']
+    
+    - name: Copy environment file
+      template:
+        src: "../templates/env.{{ env }}.j2"
+        dest: "{{ app_dir }}/.env"
+        owner: dhakacart
+        group: dhakacart
+        mode: '0600'
+      tags: ['deploy', 'config']
+    
+    - name: Pull Docker images
+      docker_image:
+        name: "{{ item }}"
+        source: pull
+      loop:
+        - "arifhossaincse22/dhakacart-backend:latest"
+        - "arifhossaincse22/dhakacart-frontend:latest"
+        - "postgres:15-alpine"
+        - "redis:7-alpine"
+      tags: ['deploy', 'update']
+    
+    - name: Stop existing containers
+      docker_compose:
+        project_src: "{{ app_dir }}"
+        state: absent
+      ignore_errors: yes
+      tags: ['deploy', 'update']
+    
+    - name: Start application with Docker Compose
+      docker_compose:
+        project_src: "{{ app_dir }}"
+        files:
+          - docker-compose.prod.yml
+        state: present
+        pull: yes
+      tags: ['deploy', 'update']
+    
+    - name: Wait for application to be ready
+      uri:
+        url: "http://localhost:5000/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 30
+      delay: 2
+      tags: ['deploy', 'verify']
+    
+    - name: Display application status
+      debug:
+        msg: "Application deployed successfully on {{ inventory_hostname }}"
+      tags: ['deploy']
+    
+    - name: Send deployment notification
+      shell: |
+        echo "DhakaCart deployed to {{ inventory_hostname }} at $(date)" >> /var/log/dhakacart/deployments.log
+      tags: ['deploy']
+
+- name: Verify Deployment
+  hosts: webservers
+  become: yes
+  
+  tasks:
+    - name: Check container status
+      command: docker ps
+      register: docker_ps
+      tags: ['verify']
+    
+    - name: Display running containers
+      debug:
+        var: docker_ps.stdout_lines
+      tags: ['verify']
+    
+    - name: Test backend API
+      uri:
+        url: "http://localhost:5000/api/products"
+        return_content: yes
+      register: api_response
+      tags: ['verify']
+    
+    - name: Display API response
+      debug:
+        msg: "API returned {{ api_response.json | length }} products"
+      when: api_response.json is defined
+      tags: ['verify']
+

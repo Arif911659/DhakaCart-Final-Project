@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: velero
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: velero
+  name: minio
+  labels:
+    component: minio
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      component: minio
+  template:
+    metadata:
+      labels:
+        component: minio
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio:latest
+        args:
+        - server
+        - /storage
+        - --console-address
+        - :9001
+        env:
+        - name: MINIO_ROOT_USER
+          value: "minioadmin"
+        - name: MINIO_ROOT_PASSWORD
+          value: "minioadmin"
+        ports:
+        - containerPort: 9000
+        - containerPort: 9001
+        volumeMounts:
+        - name: storage
+          mountPath: "/storage"
+      volumes:
+      - name: storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: velero
+  name: minio
+  labels:
+    component: minio
+spec:
+  type: NodePort
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+      nodePort: 31900
+    - name: console
+      port: 9001
+      targetPort: 9001
+      nodePort: 31901
+  selector:
+    component: minio
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: velero
+  name: minio-setup
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: mc
+        image: minio/mc:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - "mc alias set myminio http://minio:9000 minioadmin minioadmin && mc mb myminio/dhakacart-backups --ignore-existing"

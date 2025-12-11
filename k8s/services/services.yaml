@@ -1,0 +1,75 @@
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: dhakacart-db-service
+  namespace: dhakacart
+  labels:
+    app: dhakacart-db
+spec:
+  type: ClusterIP  # Internal only
+  selector:
+    app: dhakacart-db
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: dhakacart-redis-service
+  namespace: dhakacart
+  labels:
+    app: dhakacart-redis
+spec:
+  type: ClusterIP  # Internal only
+  selector:
+    app: dhakacart-redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+    protocol: TCP
+    name: redis
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: dhakacart-backend-service
+  namespace: dhakacart
+  labels:
+    app: dhakacart-backend
+spec:
+  type: NodePort  # Changed to NodePort for Load Balancer access
+  selector:
+    app: dhakacart-backend
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30081  # Fixed NodePort for backend API
+    protocol: TCP
+    name: http
+  sessionAffinity: ClientIP  # Sticky sessions if needed
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: dhakacart-frontend-service
+  namespace: dhakacart
+  labels:
+    app: dhakacart-frontend
+spec:
+  type: NodePort  # Changed to NodePort for Load Balancer access
+  selector:
+    app: dhakacart-frontend
+  ports:
+  - port: 80
+    targetPort: 80  # Nginx runs on port 80 in production (not React dev server port 3000)
+    nodePort: 30080  # Fixed NodePort (range: 30000-32767)
+    protocol: TCP
+    name: http

@@ -1,0 +1,290 @@
+name: Continuous Deployment (CD)
+
+# This workflow runs automatically when code is merged to main branch
+# It builds Docker images, pushes to Docker Hub, and deploys to Kubernetes
+
+on:
+  # Only run on main branch (production) or version tags
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  # Allow manual trigger
+  workflow_dispatch:
+
+# Environment variables (used throughout the workflow)
+env:
+  DOCKER_REGISTRY: docker.io
+  BACKEND_IMAGE: arifhossaincse22/dhakacart-backend
+  FRONTEND_IMAGE: arifhossaincse22/dhakacart-frontend
+
+jobs:
+  # Job 1: Build and Push Docker Images
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Get the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: Get version from git tag or use timestamp
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="v$(date +%Y%m%d)-${GITHUB_SHA::8}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+      
+      # Step 3: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      # Step 4: Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      # Step 5: Build and push backend image
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.BACKEND_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.BACKEND_IMAGE }}:latest
+          cache-to: type=inline
+          platforms: linux/amd64
+      
+      # Step 6: Build and push frontend image
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:latest
+          cache-to: type=inline
+          platforms: linux/amd64
+      
+      # Step 7: Upload version artifact (Robust alternative to job outputs)
+      - name: Create and upload version artifact
+        run: |
+          echo "${{ steps.version.outputs.VERSION }}" > version.txt
+          echo "Saved version to file:"
+          cat version.txt
+        
+      - name: Upload version artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-version
+          path: version.txt
+          retention-days: 1
+
+  # Job 2: Deploy to Kubernetes (Optional - requires KUBECONFIG secret)
+  deploy-kubernetes:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    # Removed job-level 'if' because accessing secrets here can cause errors
+    
+    steps:
+      # Step 1: Get the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up kubectl
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+      
+      # Step 3: Configure SSH Tunnel and Kubectl
+      - name: Configure SSH and Kubectl
+        id: login
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          BASTION_IP: ${{ vars.BASTION_IP }}
+          MASTER_PRIVATE_IP: ${{ vars.MASTER_PRIVATE_IP }}
+        run: |
+          if [ -z "$KUBE_CONFIG_DATA" ] || [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "⚠️ Secrets missing (KUBECONFIG or SSH_PRIVATE_KEY)."
+            echo "Skipping Kubernetes deployment steps."
+            echo "skipped=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "✅ Secrets found. Setting up SSH Tunnel..."
+          
+          # 1. Setup SSH Key
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          
+          # 2. Configure SSH Config for Jump Host (Bastion -> Master)
+          # This allows us to tunnel through port 22 (SSH) which is allowed by Security Groups,
+          # avoiding the blocked port 6443 issue between Bastion and Master.
+          cat > ~/.ssh/config <<EOF
+          Host bastion
+            HostName ${{ vars.BASTION_IP }}
+            User ubuntu
+            IdentityFile ~/.ssh/id_rsa
+            StrictHostKeyChecking no
+          
+          Host master-tunnel
+            HostName ${{ vars.MASTER_PRIVATE_IP }}
+            User ubuntu
+            IdentityFile ~/.ssh/id_rsa
+            ProxyJump bastion
+            StrictHostKeyChecking no
+            LocalForward 6443 localhost:6443
+            ServerAliveInterval 60
+          EOF
+          
+          # 3. Start SSH Tunnel in background
+          echo "Starting SSH tunnel..."
+          ssh -f -N master-tunnel
+          
+          # 4. Wait for Tunnel and Verify
+          echo "Waiting for tunnel to be established..."
+          sleep 5
+          if ! curl -k -m 5 https://127.0.0.1:6443/version; then
+             echo "❌ Failed to connect to Kubernetes API via Tunnel!"
+             echo "Debug Info:"
+             ps aux | grep ssh
+             cat ~/.ssh/config
+             exit 1
+          fi
+          echo "✅ Tunnel verified!"
+          
+          # 5. Configure Kubectl
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG_DATA" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          
+          # 6. Update Kubeconfig to use localhost (Tunnel)
+          # Replace the private IP with localhost in the config
+          sed -i 's/server: https.*:6443/server: https:\/\/127.0.0.1:6443/g' ~/.kube/config
+          # Disable certificate check for localhost connection
+          sed -i 's/certificate-authority-data:.*/insecure-skip-tls-verify: true/g' ~/.kube/config
+          
+          echo "skipped=false" >> $GITHUB_OUTPUT
+
+      # Step 4: Download version artifact
+      - name: Download version artifact
+        if: steps.login.outputs.skipped != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-version
+      
+      # Step 5: Read Version and Deploy
+      - name: Read Version and Deploy
+        if: steps.login.outputs.skipped != 'true'
+        run: |
+          # Read version from file (handle potential whitespace)
+          if [ -f "version.txt" ]; then
+            VERSION=$(cat version.txt | tr -d '[:space:]')
+          else
+            echo "⚠️ version.txt not found! Defaulting to 'latest'"
+            VERSION="latest"
+          fi
+          
+          # Fallback if empty
+          if [ -z "$VERSION" ]; then
+            VERSION="latest"
+          fi
+          
+          echo "🚀 Deploying Version: '$VERSION'"
+          
+          BACKEND_IMAGE="${{ env.BACKEND_IMAGE }}:$VERSION"
+          FRONTEND_IMAGE="${{ env.FRONTEND_IMAGE }}:$VERSION"
+          
+          echo "Backend Image: $BACKEND_IMAGE"
+          echo "Frontend Image: $FRONTEND_IMAGE"
+          
+          # Update backend deployment
+          kubectl set image deployment/dhakacart-backend \
+            backend=$BACKEND_IMAGE \
+            -n dhakacart
+          
+          # Update frontend deployment
+          kubectl set image deployment/dhakacart-frontend \
+            frontend=$FRONTEND_IMAGE \
+            -n dhakacart
+      
+      # Step 5: Wait for rollout to complete
+      - name: Wait for rollout
+        if: steps.login.outputs.skipped != 'true'
+        run: |
+          kubectl rollout status deployment/dhakacart-backend -n dhakacart --timeout=5m
+          kubectl rollout status deployment/dhakacart-frontend -n dhakacart --timeout=5m
+      
+      # Step 6: Verify deployment
+      - name: Verify deployment
+        if: steps.login.outputs.skipped != 'true'
+        run: |
+          echo "Backend pods:"
+          kubectl get pods -n dhakacart -l app=dhakacart-backend
+          echo "Frontend pods:"
+          kubectl get pods -n dhakacart -l app=dhakacart-frontend
+
+  # Job 3: Health Check (Verify deployment is working)
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: always()  # Run even if previous jobs fail
+    
+    steps:
+      # Step 1: Wait a bit for services to start
+      - name: Wait for services
+        run: sleep 30
+      
+      # Step 2: Check backend health (if deployed)
+      - name: Check backend health
+        run: |
+          echo "Health check - Backend should be accessible"
+          # curl -f http://your-backend-url/health || echo "Backend not accessible yet"
+        continue-on-error: true
+      
+      # Step 3: Check frontend (if deployed)
+      - name: Check frontend
+        run: |
+          echo "Health check - Frontend should be accessible"
+          # curl -f http://your-frontend-url || echo "Frontend not accessible yet"
+        continue-on-error: true
+
+  # Job 4: Notification (Optional - send email/Slack on completion)
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-kubernetes]
+    if: always()  # Always run, even on failure
+    
+    steps:
+      - name: Deployment status
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+          fi
+      
+      # You can add email/Slack notifications here
+      # - name: Send email
+      #   uses: dawidd6/action-send-mail@v3
+      #   with:
+      #     ...
+

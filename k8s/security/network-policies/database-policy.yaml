@@ -1,0 +1,99 @@
+# Network Policy for Database
+# Restricts database pod network access (most restrictive)
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dhakacart-database-policy
+  namespace: dhakacart
+spec:
+  podSelector:
+    matchLabels:
+      app: dhakacart-db
+      tier: database
+  
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  # Ingress rules - who can connect to database
+  ingress:
+    # ONLY allow from backend
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: dhakacart
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow from postgres-exporter (monitoring)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: postgres-exporter
+      ports:
+        - protocol: TCP
+          port: 5432
+  
+  # Egress rules - database should not initiate outbound connections
+  egress:
+    # Allow DNS only
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+
+---
+# Network Policy for Redis
+# Restricts Redis pod network access
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dhakacart-redis-policy
+  namespace: dhakacart
+spec:
+  podSelector:
+    matchLabels:
+      app: dhakacart-redis
+      tier: cache
+  
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  # Ingress rules - who can connect to Redis
+  ingress:
+    # ONLY allow from backend
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: dhakacart
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow from redis-exporter (monitoring)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redis-exporter
+      ports:
+        - protocol: TCP
+          port: 6379
+  
+  # Egress rules - Redis should not initiate outbound connections
+  egress:
+    # Allow DNS only
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+

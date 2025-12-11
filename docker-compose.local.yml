@@ -1,0 +1,106 @@
+version: '3.8'
+
+# LOCAL BUILD - Uses source code from frontend/ and backend/ folders
+# Usage: docker-compose -f docker-compose.local.yml up -d --build
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: dhakacart-db
+    environment:
+      POSTGRES_USER: dhakacart
+      POSTGRES_PASSWORD: dhakacart123
+      POSTGRES_DB: dhakacart_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dhakacart"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dhakacart-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: dhakacart-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - dhakacart-network
+
+  # Backend API - BUILD FROM SOURCE
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: dhakacart-backend:local
+    container_name: dhakacart-backend
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_USER: dhakacart
+      DB_PASSWORD: dhakacart123
+      DB_NAME: dhakacart_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "5000:5000"
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - dhakacart-network
+    restart: unless-stopped
+
+  # Frontend - BUILD FROM SOURCE (Development mode)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    image: dhakacart-frontend:local
+    container_name: dhakacart-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:5000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - dhakacart-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  dhakacart-network:
+    driver: bridge
+

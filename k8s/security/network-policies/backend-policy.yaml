@@ -1,0 +1,83 @@
+# Network Policy for Backend
+# Restricts backend pod network access
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: dhakacart-backend-policy
+  namespace: dhakacart
+spec:
+  podSelector:
+    matchLabels:
+      app: dhakacart-backend
+      tier: backend
+  
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  # Ingress rules - who can connect to backend
+  ingress:
+    # Allow from frontend
+    - from:
+        - podSelector:
+            matchLabels:
+              app: dhakacart-frontend
+      ports:
+        - protocol: TCP
+          port: 5000
+    
+    # Allow from ingress controller (for direct API access)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 5000
+    
+    # Allow from monitoring (Prometheus)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 5000  # metrics endpoint
+  
+  # Egress rules - what backend can connect to
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+    
+    # Allow connection to PostgreSQL
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: dhakacart
+      ports:
+        - protocol: TCP
+          port: 5432
+    
+    # Allow connection to Redis
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: dhakacart
+      ports:
+        - protocol: TCP
+          port: 6379
+    
+    # Allow HTTPS outbound (for payment APIs, external services)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+

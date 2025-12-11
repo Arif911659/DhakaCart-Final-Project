@@ -1,0 +1,149 @@
+---
+# Provision Playbook for DhakaCart
+# Sets up new servers with required software and configuration
+
+- name: Provision DhakaCart Servers
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    timezone: "Asia/Dhaka"
+  
+  tasks:
+    - name: Display target host information
+      debug:
+        msg: "Provisioning {{ inventory_hostname }} ({{ ansible_distribution }} {{ ansible_distribution_version }})"
+    
+    - name: Set timezone
+      timezone:
+        name: "{{ timezone }}"
+    
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      when: ansible_os_family == "Debian"
+    
+    - name: Install basic packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - htop
+          - net-tools
+          - ufw
+          - fail2ban
+          - unzip
+          - build-essential
+        state: present
+      when: ansible_os_family == "Debian"
+    
+    - name: Create dhakacart user
+      user:
+        name: dhakacart
+        shell: /bin/bash
+        create_home: yes
+        groups: sudo
+        append: yes
+    
+    - name: Add SSH key for dhakacart user
+      authorized_key:
+        user: dhakacart
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+      ignore_errors: yes
+    
+    - name: Configure UFW firewall
+      ufw:
+        rule: "{{ item.rule }}"
+        port: "{{ item.port }}"
+        proto: "{{ item.proto }}"
+      loop:
+        - { rule: 'allow', port: '22', proto: 'tcp' }    # SSH
+        - { rule: 'allow', port: '80', proto: 'tcp' }    # HTTP
+        - { rule: 'allow', port: '443', proto: 'tcp' }   # HTTPS
+        - { rule: 'allow', port: '3000', proto: 'tcp' }  # Frontend
+        - { rule: 'allow', port: '5000', proto: 'tcp' }  # Backend
+      when: inventory_hostname in groups['webservers']
+    
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: deny
+    
+    - name: Configure fail2ban
+      copy:
+        dest: /etc/fail2ban/jail.local
+        content: |
+          [DEFAULT]
+          bantime = 3600
+          findtime = 600
+          maxretry = 5
+          
+          [sshd]
+          enabled = true
+      notify: restart fail2ban
+    
+    - name: Ensure fail2ban is running
+      systemd:
+        name: fail2ban
+        state: started
+        enabled: yes
+    
+    - name: Configure sysctl for performance
+      sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { name: 'vm.swappiness', value: '10' }
+        - { name: 'net.core.somaxconn', value: '1024' }
+        - { name: 'net.ipv4.tcp_max_syn_backlog', value: '2048' }
+    
+    - name: Create application directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: dhakacart
+        group: dhakacart
+        mode: '0755'
+      loop:
+        - /opt/dhakacart
+        - /backups
+        - /var/log/dhakacart
+  
+  handlers:
+    - name: restart fail2ban
+      systemd:
+        name: fail2ban
+        state: restarted
+
+- name: Install Docker
+  hosts: all
+  become: yes
+  roles:
+    - docker
+
+- name: Install Monitoring Tools
+  hosts: monitoring
+  become: yes
+  roles:
+    - monitoring
+
+- name: Configure Backups
+  hosts: databases
+  become: yes
+  roles:
+    - backup
+

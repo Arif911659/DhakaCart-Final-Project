@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+    
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 4h
+      receiver: 'default-receiver'
+      
+      routes:
+        # Critical alerts
+        - match:
+            severity: critical
+          receiver: 'critical-receiver'
+          continue: true
+        
+        # Warning alerts
+        - match:
+            severity: warning
+          receiver: 'warning-receiver'
+    
+    receivers:
+      # Default receiver (logs only)
+      - name: 'default-receiver'
+      
+      # Critical receiver (would send emails/slack in production)
+      - name: 'critical-receiver'
+        # Add webhook_configs or email_configs here
+        # Example:
+        # webhook_configs:
+        #   - url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+        #     send_resolved: true
+      
+      # Warning receiver  
+      - name: 'warning-receiver'
+        # Add webhook_configs or email_configs here
+    
+    inhibit_rules:
+      # Inhibit warning if critical is firing for same alert
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'cluster', 'service']

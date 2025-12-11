@@ -1,0 +1,99 @@
+name: Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  trivy-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy --version
+      
+      - name: Scan Backend Image
+        run: |
+          echo "Scanning Backend Docker Image..."
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --format json \
+            --output backend-scan-results.json \
+            arifhossaincse22/dhakacart-backend:latest
+          
+          # Also create human-readable report
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --format table \
+            arifhossaincse22/dhakacart-backend:latest > backend-scan.txt
+      
+      - name: Scan Frontend Image
+        run: |
+          echo "Scanning Frontend Docker Image..."
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --format json \
+            --output frontend-scan-results.json \
+            arifhossaincse22/dhakacart-frontend:latest
+          
+          # Also create human-readable report
+          trivy image \
+            --severity CRITICAL,HIGH \
+            --format table \
+            arifhossaincse22/dhakacart-frontend:latest > frontend-scan.txt
+      
+      - name: Check for Critical Vulnerabilities
+        run: |
+          echo "Checking for CRITICAL vulnerabilities..."
+          
+          # Count CRITICAL issues in backend
+          BACKEND_CRITICAL=$(jq '.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL") | .VulnerabilityID' backend-scan-results.json 2>/dev/null | wc -l)
+          
+          # Count CRITICAL issues in frontend
+          FRONTEND_CRITICAL=$(jq '.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL") | .VulnerabilityID' frontend-scan-results.json 2>/dev/null | wc -l)
+          
+          echo "Backend CRITICAL vulnerabilities: $BACKEND_CRITICAL"
+          echo "Frontend CRITICAL vulnerabilities: $FRONTEND_CRITICAL"
+          
+          # Fail if ANY critical vulnerabilities found
+          if [ "$BACKEND_CRITICAL" -gt 0 ] || [ "$FRONTEND_CRITICAL" -gt 0 ]; then
+            echo "❌ CRITICAL vulnerabilities found! Build failed."
+            echo "Review scan reports for details."
+            exit 1
+          else
+            echo "✅ No CRITICAL vulnerabilities found."
+          fi
+      
+      - name: Upload Scan Results
+        if: always()  # Upload even if previous step fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-reports
+          path: |
+            backend-scan-results.json
+            backend-scan.txt
+            frontend-scan-results.json
+            frontend-scan.txt
+          retention-days: 30
+      
+      - name: Generate Security Summary
+        if: always()
+        run: |
+          echo "## 🔐 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Backend Image" >> $GITHUB_STEP_SUMMARY
+          cat backend-scan.txt >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Frontend Image" >> $GITHUB_STEP_SUMMARY
+          cat frontend-scan.txt >> $GITHUB_STEP_SUMMARY
