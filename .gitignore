@@ -50,3 +50,9 @@ terraform.tfvars
 
 # Documentation to ignore
 CHANGELOG.md
+
+# Generated deployment files
+.deploy_state
+scripts/provisioning/generated/
+scripts/provisioning/.terraform-outputs.env
+terraform/aws-infra/aws_instances_output.txt

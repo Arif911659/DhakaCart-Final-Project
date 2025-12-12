@@ -19,4 +19,4 @@ data:
   # Use dynamic update script: ./scripts/update-alb-dns-dynamic.sh
   # This script automatically gets ALB DNS from Terraform and updates ConfigMap
   # Manual update: kubectl patch configmap dhakacart-config -n dhakacart --patch '{"data":{"REACT_APP_API_URL":"http://NEW_ALB_DNS/api"}}'
-  REACT_APP_API_URL: http://dhakacart-k8s-alb-1174632945.ap-southeast-1.elb.amazonaws.com/api
+  REACT_APP_API_URL: http://dhakacart-k8s-alb-806015948.ap-southeast-1.elb.amazonaws.com/api
