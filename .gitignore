@@ -47,3 +47,6 @@ testing/load-tests/reports
 terraform.tfvars
 *.tfvars
 !*.tfvars.example.deploy_state
+
+# Documentation to ignore
+CHANGELOG.md

@@ -14,7 +14,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 echo -e "${YELLOW}========================================${NC}"
 echo -e "${YELLOW}   Alerting Stack Deployment${NC}"
@@ -60,7 +60,7 @@ kubectl wait --for=condition=ready pod -l app=alertmanager -n monitoring --timeo
 echo "✅ Alerting stack deployed!"
 EOF
 
-ssh -i "$PROJECT_ROOT/terraform/aws-infra/dhakacart-k8s-key.pem" ubuntu@${BASTION_IP} \
+ssh -i "$SSH_KEY_PATH" ubuntu@${BASTION_IP} \
     "scp /tmp/deploy-alerting.sh ubuntu@${MASTER_IPS[0]}:/tmp/ && \
      ssh ubuntu@${MASTER_IPS[0]} 'bash /tmp/deploy-alerting.sh'"
 
@@ -84,7 +84,7 @@ echo "Checking alert rules..."
 kubectl exec -n monitoring deployment/prometheus-deployment -- promtool check config /etc/prometheus/prometheus.yml 2>/dev/null || echo "Config check skipped"
 EOF
 
-ssh -i "$PROJECT_ROOT/terraform/aws-infra/dhakacart-k8s-key.pem" ubuntu@${BASTION_IP} \
+ssh -i "$SSH_KEY_PATH" ubuntu@${BASTION_IP} \
     "scp /tmp/verify-alerting.sh ubuntu@${MASTER_IPS[0]}:/tmp/ && \
      ssh ubuntu@${MASTER_IPS[0]} 'bash /tmp/verify-alerting.sh'"
 
